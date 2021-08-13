@@ -7,6 +7,7 @@
 
 `define PUMMU
 `define PUHPTW
+
 `include "pu/multipu.v"
 
 `include "dev/intctrl.v"
@@ -26,6 +27,8 @@
 `include "./devtbl.nexys4ddr.v"
 
 `include "./pll_100_to_50_100_mhz.nexys4ddr.v"
+
+`include "dev/gpio.v"
 
 module nexys4ddr (
 
@@ -63,6 +66,9 @@ module nexys4ddr (
 	,activity
 
 	,an
+
+	,gp_i
+	,gp_o
 );
 
 `include "lib/clog2.v"
@@ -70,6 +76,7 @@ module nexys4ddr (
 localparam ARCHBITSZ = 32;
 localparam CLOG2ARCHBITSZBY8 = clog2(ARCHBITSZ/8);
 localparam ADDRBITSZ = (ARCHBITSZ-CLOG2ARCHBITSZBY8);
+localparam GPIO_COUNT = 16;
 
 input wire rst_n;
 
@@ -121,6 +128,9 @@ assign activity = (~sd_cs || litedram_init_error || brkonrst_w);
 output wire [8 -1 : 0] an;
 
 assign an = {8{1'b1}};
+
+input  wire [GPIO_COUNT -1 : 0] gp_i;
+output wire [GPIO_COUNT -1 : 0] gp_o;
 
 localparam CLKFREQ = 50000000;
 
@@ -183,7 +193,7 @@ wire [INTCTRLDSTCOUNT -1 : 0] intrdydst_w;
 wire [INTCTRLDSTCOUNT -1 : 0] intbestdst_w;
 
 localparam PI1RMASTERCOUNT       = 1;
-localparam PI1RSLAVECOUNT        = 7;
+localparam PI1RSLAVECOUNT        = 8;
 localparam PI1RDEFAULTSLAVEINDEX = 6;
 localparam PI1RFIRSTSLAVEADDR    = 0;
 localparam PI1RARCHBITSZ         = ARCHBITSZ;
@@ -588,5 +598,27 @@ localparam INVALIDDEVMAPSZ = 'h4000;
 assign s_pi1r_data_w1[6] = {ARCHBITSZ{1'b0}};
 assign s_pi1r_rdy_w[6]   = 1'b1;
 assign s_pi1r_mapsz_w[6] = INVALIDDEVMAPSZ;
+
+gpio #(
+
+	 .GPIO_COUNT (GPIO_COUNT)
+
+) gpio (
+
+	 .rst_i (!pll_locked || rst_p)
+
+	,.clk_i     (clk_w)
+
+	,.pi1_op_i    (s_pi1r_op_w[7])
+	,.pi1_addr_i  (s_pi1r_addr_w[7])
+	,.pi1_data_i  (s_pi1r_data_w0[7])
+	,.pi1_data_o  (s_pi1r_data_w1[7])
+	,.pi1_sel_i   (s_pi1r_sel_w[7])
+	,.pi1_rdy_o   (s_pi1r_rdy_w[7])
+	,.pi1_mapsz_o (s_pi1r_mapsz_w[7])
+
+	,.gp_i (gp_i)
+	,.gp_o (gp_o)
+);
 
 endmodule
