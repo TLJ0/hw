@@ -30,6 +30,8 @@
 
 `include "dev/gpio.v"
 
+`include "dev/pwm.v"
+
 module nexys4ddr (
 
 	 rst_n
@@ -69,6 +71,9 @@ module nexys4ddr (
 
 	,gp_i
 	,gp_o
+	
+	,pwm_i
+	,pwm_o
 );
 
 `include "lib/clog2.v"
@@ -76,7 +81,8 @@ module nexys4ddr (
 localparam ARCHBITSZ = 32;
 localparam CLOG2ARCHBITSZBY8 = clog2(ARCHBITSZ/8);
 localparam ADDRBITSZ = (ARCHBITSZ-CLOG2ARCHBITSZBY8);
-localparam GPIO_COUNT = 16;
+localparam GPIO_COUNT = 8;
+localparam PWM_COUNT = 8;
 
 input wire rst_n;
 
@@ -131,6 +137,9 @@ assign an = {8{1'b1}};
 
 input  wire [GPIO_COUNT -1 : 0] gp_i;
 output wire [GPIO_COUNT -1 : 0] gp_o;
+
+input  wire [PWM_COUNT -1 : 0] pwm_i;
+output wire [PWM_COUNT -1 : 0] pwm_o;
 
 localparam CLKFREQ = 50000000;
 
@@ -593,17 +602,40 @@ litedram litedram (
 	,.wb_ctrl_cti   (3'b000)
 	,.wb_ctrl_bte   (2'b00)
 );
-
+ 
 localparam INVALIDDEVMAPSZ = 'h4000;
 assign s_pi1r_data_w1[6] = {ARCHBITSZ{1'b0}};
 assign s_pi1r_rdy_w[6]   = 1'b1;
 assign s_pi1r_mapsz_w[6] = INVALIDDEVMAPSZ;
 
-gpio #(
+gpio #( 
 
 	 .GPIO_COUNT (GPIO_COUNT)
 
 ) gpio (
+
+	 .rst_i (!pll_locked || rst_p)
+
+	,.clk_i     (clk_w)
+
+	,.pi1_op_i    (s_pi1r_op_w[8])
+	,.pi1_addr_i  (s_pi1r_addr_w[8])
+	,.pi1_data_i  (s_pi1r_data_w0[8])
+	,.pi1_data_o  (s_pi1r_data_w1[8])
+	,.pi1_sel_i   (s_pi1r_sel_w[8])
+	,.pi1_rdy_o   (s_pi1r_rdy_w[8])
+	,.pi1_mapsz_o (s_pi1r_mapsz_w[8])
+
+	,.gp_i (gp_i)
+	,.gp_o (gp_o)
+);
+
+pwm #(
+
+	  .PWM_COUNT (PWM_COUNT)
+	 ,.CLKFREQ (CLKFREQ)
+
+) pwm (
 
 	 .rst_i (!pll_locked || rst_p)
 
@@ -617,8 +649,8 @@ gpio #(
 	,.pi1_rdy_o   (s_pi1r_rdy_w[7])
 	,.pi1_mapsz_o (s_pi1r_mapsz_w[7])
 
-	,.gp_i (gp_i)
-	,.gp_o (gp_o)
+	,.pwm_i (pwm_i) 
+	,.pwm_o (pwm_o)
 );
 
 endmodule
